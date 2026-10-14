@@ -107,7 +107,7 @@ void LookAndFeel::drawButtonBackground (Graphics& g, Button& b, const Colour&, b
 
 void LookAndFeel::drawButtonText (Graphics& g, TextButton& b, bool hi, bool)
 {
-    g.setFont (uiFont (jmin (12.5f, b.getHeight() * 0.46f), true, 0.12f));
+    g.setFont (uiFont (jmin (14.0f, b.getHeight() * 0.5f), true, 0.08f));
     g.setColour (b.getToggleState() ? Colour (0xff061428) : (hi ? col::text : col::textDim));
     g.drawText (b.getButtonText(), b.getLocalBounds().reduced (2, 0), Justification::centred, false);
 }
@@ -151,8 +151,8 @@ Knob::Knob (AudioProcessorValueTreeState& s, const String& id, const String& t, 
 void Knob::resized()
 {
     auto r = getLocalBounds();
-    r.removeFromTop (big ? 20 : 16);
-    r.removeFromBottom (big ? 26 : 22);
+    r.removeFromTop (big ? 22 : 18);
+    r.removeFromBottom (big ? 28 : 24);
     const int s = jmin (r.getWidth(), r.getHeight());
     slider.setBounds (r.withSizeKeepingCentre (s, s));
 }
@@ -161,15 +161,15 @@ void Knob::paint (Graphics& g)
 {
     auto r = getLocalBounds();
     g.setColour (col::text);
-    g.setFont (uiFont (big ? 12.5f : 10.5f, true, 0.16f));
-    g.drawText (title, r.removeFromTop (big ? 20 : 16), Justification::centred, false);
-    auto pill = r.removeFromBottom (big ? 26 : 22).withSizeKeepingCentre (big ? 80 : 64, big ? 20 : 17).toFloat();
+    g.setFont (uiFont (big ? 14.0f : 12.0f, true, 0.1f));
+    g.drawText (title, r.removeFromTop (big ? 22 : 18), Justification::centred, false);
+    auto pill = r.removeFromBottom (big ? 28 : 24).withSizeKeepingCentre (big ? 86 : 70, big ? 22 : 19).toFloat();
     g.setColour (Colour (0xff05070c));
     g.fillRoundedRectangle (pill, 4.0f);
     g.setColour (col::edge);
     g.drawRoundedRectangle (pill, 4.0f, 1.0f);
     g.setColour (col::cyan);
-    g.setFont (uiFont (big ? 13.0f : 11.5f, true));
+    g.setFont (uiFont (big ? 14.5f : 13.0f, true));
     g.drawText (slider.getTextFromValue (slider.getValue()), pill, Justification::centred, false);
 }
 
@@ -371,6 +371,10 @@ void MainPanel::renderBackground()
         g.fillRect (rnd.nextFloat() * W, rnd.nextFloat() * H, 1.0f, 1.0f);
     }
 
+}
+
+void MainPanel::drawStatic (Graphics& g)
+{
     // header
     {
         ColourGradient line (col::cyan.withAlpha (0.0f), 0, 0, col::cyan.withAlpha (0.0f), (float) W, 0, false);
@@ -383,7 +387,7 @@ void MainPanel::renderBackground()
     g.setFont (uiFont (30.0f, true, 0.16f));
     g.drawText ("GLOW VERB", 66, 10, 320, 34, Justification::centredLeft, false);
     g.setColour (col::textDim);
-    g.setFont (uiFont (10.5f, true, 0.28f));
+    g.setFont (uiFont (12.0f, true, 0.22f));
     g.drawText ("ROHIT JI  |  ALGORITHMIC REVERB", 68, 42, 420, 16, Justification::centredLeft, false);
     g.drawText ("PRESET", W - 24 - 260 - 74, 20, 64, 30, Justification::centredRight, false);
 
@@ -397,7 +401,7 @@ void MainPanel::renderBackground()
         g.drawLine (rf.getX() + 10, rf.getY() + 1, rf.getRight() - 10, rf.getY() + 1, 1.0f);
         g.setColour (col::edge);
         g.drawRoundedRectangle (rf.reduced (0.5f), 10.0f, 1.0f);
-        g.setFont (uiFont (10.5f, true, 0.3f));
+        g.setFont (uiFont (12.0f, true, 0.24f));
         const int tw = GlyphArrangement::getStringWidthInt (g.getCurrentFont(), title) + 8;
         g.setColour (col::cyan);
         g.drawText (title, r.getX() + 16, r.getY() + 6, tw + 10, 16, Justification::centredLeft, false);
@@ -421,7 +425,7 @@ void MainPanel::renderBackground()
     }
 
     g.setColour (col::textDim.withAlpha (0.75f));
-    g.setFont (uiFont (9.5f, true, 0.25f));
+    g.setFont (uiFont (11.0f, true, 0.2f));
     g.drawText ("VOCALS  -  DRUMS  -  INSTRUMENTS  -  PADS", 26, H - 22, 420, 16, Justification::centredLeft, false);
     g.drawText ("v1.0  |  ROHIT JI", W - 26 - 300, H - 22, 300, 16, Justification::centredRight, false);
 }
@@ -484,10 +488,10 @@ void MainPanel::paintDisplay (Graphics& g)
         g.setFont (uiFont (22.0f, true, 0.12f));
         g.drawText (t.name, r.reduced (8, 4), Justification::topRight, false);
         g.setColour (col::textDim);
-        g.setFont (uiFont (11.0f));
+        g.setFont (uiFont (13.0f));
         g.drawText (envBlurb[currentType], r.reduced (8, 4).withTrimmedTop (28), Justification::topRight, false);
         g.setColour (col::cyan);
-        g.setFont (uiFont (12.0f, true, 0.06f));
+        g.setFont (uiFont (14.0f, true, 0.04f));
         g.drawText ("DECAY " + String (decayS, 2) + " s   PRE " + String (roundToInt (preMs)) + " ms",
                     r.reduced (8, 4), Justification::bottomRight, false);
     }
@@ -533,7 +537,7 @@ void MainPanel::paintDisplay (Graphics& g)
         g.setColour (col::violet.brighter (0.3f));
         g.strokePath (p, PathStrokeType (1.6f));
         g.setColour (col::textDim);
-        g.setFont (uiFont (9.5f, true, 0.2f));
+        g.setFont (uiFont (11.0f, true, 0.16f));
         g.drawText ("WET EQ", r.reduced (4, 2), Justification::topLeft, false);
         g.drawText ("100", Rectangle<float> (fx (100) + 3, r.getBottom() - 12, 30, 12), Justification::left, false);
         g.drawText ("1k", Rectangle<float> (fx (1000) + 3, r.getBottom() - 12, 30, 12), Justification::left, false);
@@ -551,7 +555,7 @@ void MainPanel::paintMeters (Graphics& g)
     {
         auto row = Rectangle<float> (r.getX(), r.getY() + rowH * (float) i, r.getWidth(), rowH).reduced (0, 2.5f);
         g.setColour (col::textDim);
-        g.setFont (uiFont (9.5f, true, 0.2f));
+        g.setFont (uiFont (11.0f, true, 0.12f));
         g.drawText (ms[i].name, row.removeFromLeft (36), Justification::centredLeft, false);
         g.setColour (Colour (0xff05070c));
         g.fillRoundedRectangle (row, 3.0f);
@@ -569,7 +573,7 @@ void MainPanel::paintSidechain (Graphics& g)
 {
     auto r = duckArea.toFloat().reduced (10.0f, 8.0f);
     g.setColour (col::textDim);
-    g.setFont (uiFont (9.5f, true, 0.2f));
+    g.setFont (uiFont (11.0f, true, 0.14f));
     g.drawText ("DUCKING", r.removeFromTop (12), Justification::centredLeft, false);
     const bool ext = (int) param (IDs::scSource) == 1;
     const String status = ext ? (scConnected ? "EXTERNAL KEY" : "NO SIDECHAIN - USING INPUT") : "KEY: OWN INPUT";
@@ -593,7 +597,9 @@ void MainPanel::paintSidechain (Graphics& g)
 
 void MainPanel::paint (Graphics& g)
 {
+    g.setImageResamplingQuality (Graphics::highResamplingQuality);
     g.drawImage (background, getLocalBounds().toFloat());
+    drawStatic (g);
 
     // lamp
     {
@@ -609,7 +615,7 @@ void MainPanel::paint (Graphics& g)
 
     // environment hint
     g.setColour (col::textDim);
-    g.setFont (uiFont (10.5f));
+    g.setFont (uiFont (12.5f));
     g.drawText ("Click an environment to load its space", envPanel.reduced (16).removeFromBottom (24), Justification::centred, false);
 
     paintDisplay (g);
@@ -651,7 +657,7 @@ GlowVerbEditor::GlowVerbEditor (GlowVerbProcessor& p) : AudioProcessorEditor (&p
     setResizeLimits (gvui::MainPanel::W * 3 / 5, gvui::MainPanel::H * 3 / 5, gvui::MainPanel::W * 2, gvui::MainPanel::H * 2);
     if (auto* c = getConstrainer())
         c->setFixedAspectRatio ((double) gvui::MainPanel::W / (double) gvui::MainPanel::H);
-    setSize (gvui::MainPanel::W * 17 / 20, gvui::MainPanel::H * 17 / 20);
+    setSize (gvui::MainPanel::W, gvui::MainPanel::H);
 }
 
 void GlowVerbEditor::resized()

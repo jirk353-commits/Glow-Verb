@@ -17,8 +17,8 @@ namespace col
     const juce::Colour cyanDeep  { 0xff2a8cff };
     const juce::Colour violet    { 0xff9a7bff };
     const juce::Colour silver    { 0xffaebbd0 };
-    const juce::Colour text      { 0xffdce6f2 };
-    const juce::Colour textDim   { 0xff7d8aa0 };
+    const juce::Colour text      { 0xfff0f6ff };
+    const juce::Colour textDim   { 0xffa9b7cc };
 }
 
 class LookAndFeel : public juce::LookAndFeel_V4
@@ -72,6 +72,7 @@ public:
 private:
     void timerCallback() override;
     void renderBackground();
+    void drawStatic (juce::Graphics&);
     void paintDisplay (juce::Graphics&);
     void paintMeters (juce::Graphics&);
     void paintSidechain (juce::Graphics&);
