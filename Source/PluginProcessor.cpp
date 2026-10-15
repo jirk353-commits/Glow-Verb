@@ -143,6 +143,7 @@ void GlowVerbProcessor::prepareToPlay (double sampleRate, int)
     airSm.reset (fs, 0.05);   airSm.setCurrentAndTargetValue (p[pAir]->load() * 0.01f);
     widthSm.reset (fs, 0.05); widthSm.setCurrentAndTargetValue (p[pWidth]->load() * 0.01f);
     duckEnv = 0.0f; duckGainDb = 0.0f;
+    lastMix = -1.0f;
 }
 
 void GlowVerbProcessor::updateFilters()
@@ -220,6 +221,7 @@ void GlowVerbProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
     const float thrDb = p[pThr]->load();
     const float relCoef = std::exp (-1.0f / (0.001f * p[pRel]->load() * (float) fs));
     const float attCoef = std::exp (-1.0f / (0.004f * (float) fs));
+    const float duckSm  = 1.0f - std::exp (-1.0f / (0.002f * (float) fs));   // gain-change glide, same at any sample rate
 
     float* L = mainOut.getWritePointer (0);
     float* R = numCh > 1 ? mainOut.getWritePointer (1) : nullptr;
@@ -278,20 +280,26 @@ void GlowVerbProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
         else        det = jmax (std::abs (dl), std::abs (dr));
         duckEnv = det > duckEnv ? attCoef * duckEnv + (1.0f - attCoef) * det : relCoef * duckEnv + (1.0f - relCoef) * det;
         float duckDb = 0.0f;
-        if (duckDepthDb > 0.01f)
+        if (duckDepthDb > 0.01f && duckEnv > 1.0e-5f)
         {
-            const float lvl = Decibels::gainToDecibels (duckEnv, -100.0f);
+            const float lvl = 8.6858896f * std::log (duckEnv);
             duckDb = jlimit (0.0f, 1.0f, (lvl - thrDb) / 12.0f) * duckDepthDb;
         }
-        duckGainDb += 0.01f * (duckDb - duckGainDb);
-        const float dg = Decibels::decibelsToGain (-duckGainDb);
-        wl *= dg; wr *= dg;
+        duckGainDb += duckSm * (duckDb - duckGainDb);
+        if (duckGainDb > 0.001f)
+        {
+            const float dg = std::exp (-0.11512925f * duckGainDb);   // dB -> gain
+            wl *= dg; wr *= dg;
+        }
         maxDuck = jmax (maxDuck, duckGainDb);
 
         // mix (equal power) + output
-        const float m = mixSm.getNextValue();
-        const float dryG = std::cos (m * MathConstants<float>::halfPi);
-        const float wetG = std::sin (m * MathConstants<float>::halfPi);
+        if (mixSm.isSmoothing() || lastMix < 0.0f)
+        {
+            lastMix = mixSm.getNextValue();
+            dryG = std::cos (lastMix * MathConstants<float>::halfPi);
+            wetG = std::sin (lastMix * MathConstants<float>::halfPi);
+        }
         const float o = outSm.getNextValue();
         const float yl = (dl * dryG + wl * wetG) * o;
         const float yr = (dr * dryG + wr * wetG) * o;

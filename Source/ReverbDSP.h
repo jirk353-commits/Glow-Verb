@@ -64,6 +64,20 @@ struct Delay
         const float b = buf[(size_t) ((pos - di - 1) & mask)];
         return a + fr * (b - a);
     }
+    /** 4-point Hermite read: keeps the top end when the read point moves (modulated lines). d >= 2 */
+    float readCubic (float d) const noexcept
+    {
+        const int di = (int) d;
+        const float t = d - (float) di;
+        const float xm1 = buf[(size_t) ((pos - di + 1) & mask)];
+        const float x0  = buf[(size_t) ((pos - di) & mask)];
+        const float x1  = buf[(size_t) ((pos - di - 1) & mask)];
+        const float x2  = buf[(size_t) ((pos - di - 2) & mask)];
+        const float c1 = 0.5f * (x1 - xm1);
+        const float c2 = xm1 - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
+        const float c3 = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
+        return ((c3 * t + c2) * t + c1) * t + x0;
+    }
     float readInt (int d) const noexcept { return buf[(size_t) ((pos - d) & mask)]; }
 };
 
@@ -99,6 +113,11 @@ public:
         for (auto& a : diffL) a.prepare ((int) (0.05f * fs));
         for (auto& a : diffR) a.prepare ((int) (0.05f * fs));
         lastType = -1;
+        firstParams = true;
+        // sample-rate independent smoothing / filter coefficients
+        lenSmooth = 1.0f - std::exp (-1.0f / (0.045f * fs));                         // ~45 ms glide for size changes
+        erLpA     = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * juce::jmin (11000.0f, 0.45f * fs) / fs);
+        lofiA     = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * juce::jmin (7500.0f, 0.45f * fs) / fs);
         reset();
     }
 
@@ -109,7 +128,8 @@ public:
         for (auto& a : diffL) a.d.clear();
         for (auto& a : diffR) a.d.clear();
         std::fill (std::begin (damp), std::end (damp), 0.0f);
-        erLpL = erLpR = 0.0f;
+        std::fill (std::begin (bassLp), std::end (bassLp), 0.0f);
+        erLpL = erLpR = 0.0f; lofiL = lofiR = 0.0f;
         for (int i = 0; i < N; ++i) { lfo[i] = (float) i / (float) N; curLen[i] = targetLen[i]; }
     }
 
@@ -138,6 +158,20 @@ public:
             targetLen[i] = juce::jlimit (8.0f, 0.38f * fs, baseMs[i] * scale * 0.001f * fs);
             gain[i] = std::pow (10.0f, -3.0f * (targetLen[i] / fs) / juce::jmax (0.05f, p.decay * 1.22f));
         }
+        // frequency-dependent decay (high shelf, like a real room / VintageVerb style):
+        // highs above the shelf decay at hfRatio x the main decay time, lows slightly longer.
+        const float dmp = juce::jlimit (0.0f, 1.0f, p.damping * 0.01f);
+        const float hfRatio = 1.0f - 0.92f * dmp;                                   // 1.0 .. 0.08
+        const float shelfHz = 7000.0f * std::pow (1800.0f / 7000.0f, dmp);          // 7 k .. 1.8 k
+        const float bassRatio = 1.12f;
+        for (int i = 0; i < N; ++i)
+        {
+            const float sec = targetLen[i] / fs, T = juce::jmax (0.05f, p.decay * 1.22f);
+            const float gHf = std::pow (10.0f, -3.0f * sec / (T * hfRatio));
+            const float gLo = std::pow (10.0f, -3.0f * sec / (T * bassRatio));
+            hfGain[i]   = juce::jlimit (0.0f, 1.0f, gHf / gain[i]);
+            bassGain[i] = juce::jlimit (1.0f, 1.2f, gLo / gain[i]);
+        }
         if (firstParams) { for (int i = 0; i < N; ++i) curLen[i] = targetLen[i]; firstParams = false; }
 
         // diffusion allpasses (lengths follow size a little)
@@ -150,9 +184,8 @@ public:
         }
         apGain = 0.30f + 0.48f * juce::jlimit (0.0f, 1.0f, p.diffusion * 0.01f);
 
-        // damping: one-pole low-pass inside the loop, 20 kHz .. 1.5 kHz
-        const float fc = 20000.0f * std::pow (1500.0f / 20000.0f, juce::jlimit (0.0f, 1.0f, p.damping * 0.01f));
-        dampA = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * juce::jmin (fc, 0.45f * fs) / fs);
+        dampA = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * juce::jmin (shelfHz, 0.45f * fs) / fs);
+        bassA = 1.0f - std::exp (-juce::MathConstants<float>::twoPi * 250.0f / fs);
 
         preSamples = juce::jlimit (0.0f, 0.29f * fs, p.predelayMs * 0.001f * fs);
         modDepth = t.modDepthMs * 0.001f * fs * (p.mod * 0.02f);
@@ -185,8 +218,8 @@ public:
                 eL += gE[k] * erL.read (1.0f + tL[k] * erScale);
                 eR += gE[k] * erR.read (1.0f + tR[k] * erScale);
             }
-            erLpL += 0.55f * (eL - erLpL);
-            erLpR += 0.55f * (eR - erLpR);
+            erLpL += erLpA * (eL - erLpL);
+            erLpR += erLpA * (eR - erLpR);
             eL = erLpL * erGain * 0.6f;
             eR = erLpR * erGain * 0.6f;
             // feed some ER into the tank for a natural build-up
@@ -204,13 +237,15 @@ public:
         float v[N];
         for (int i = 0; i < N; ++i)
         {
-            curLen[i] += 0.0005f * (targetLen[i] - curLen[i]);
+            curLen[i] += lenSmooth * (targetLen[i] - curLen[i]);
             lfo[i] += modInc * (1.0f + 0.13f * (float) i);
             if (lfo[i] >= 1.0f) lfo[i] -= 1.0f;
             const float m = modDepth * (0.5f + 0.5f * fastSin (lfo[i]));
-            const float d = lines[i].read (juce::jmax (2.0f, curLen[i] - m));
-            damp[i] += dampA * (d - damp[i]);
-            v[i] = damp[i] * gain[i];
+            const float d = lines[i].readCubic (juce::jmax (3.0f, curLen[i] - m));
+            damp[i] += dampA * (d - damp[i]);                       // part below the shelf
+            bassLp[i] += bassA * (d - bassLp[i]);
+            const float shaped = damp[i] + hfGain[i] * (d - damp[i]) + (bassGain[i] - 1.0f) * bassLp[i];
+            v[i] = shaped * gain[i];
         }
         // late output taps
         const float lateL = v[0] - v[2] + v[4] - v[6] + 0.5f * (v[1] + v[5]);
@@ -226,8 +261,8 @@ public:
 
         if (lofi)
         {
-            lofiL += 0.35f * (outL - lofiL);
-            lofiR += 0.35f * (outR - lofiR);
+            lofiL += lofiA * (outL - lofiL);
+            lofiR += lofiA * (outR - lofiR);
             outL = std::tanh (lofiL * 1.4f) / 1.0f;
             outR = std::tanh (lofiR * 1.4f) / 1.0f;
         }
@@ -261,6 +296,8 @@ private:
     const EnvType* env = nullptr;
 
     float targetLen[N] {}, curLen[N] {}, gain[N] {}, damp[N] {}, lfo[N] {};
+    float hfGain[N] {}, bassGain[N] {}, bassLp[N] {};
+    float lenSmooth = 0.0005f, erLpA = 0.75f, lofiA = 0.6f, bassA = 0.03f;
     float dampA = 0.5f, apGain = 0.6f, preSamples = 0.0f, modDepth = 0.0f, modInc = 0.0f;
     float erGain = 0.5f, erScale = 0.0f, erLpL = 0.0f, erLpR = 0.0f, lofiL = 0.0f, lofiR = 0.0f;
     bool lofi = false, firstParams = true;

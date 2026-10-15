@@ -83,7 +83,13 @@ jobs:
           | **${FILE_BASE}-Setup-32bit.exe** | Older 32-bit DAWs only |
 
           Run the setup and click **Next > Install > Finish**. Then rescan plugins in your DAW.
+
+          ### What's new in v1.1.0
+          - New reverb tone: open, airy highs with a smooth natural roll-off (VintageVerb-style colour) instead of a dull tail
+          - Same sound at 44.1k, 48k, 96k and 192k (high sample rate / HQ render now works properly)
+          - Smoother modulation without losing the top end, lighter on CPU
+          - Same design, presets and settings - old projects open as before
           NOTES
           sed -i 's/^          //' notes.md
-          gh release create v1.0.0 out/${FILE_BASE}-Setup-64bit.exe out/${FILE_BASE}-Setup-32bit.exe \
-            --title "${PLUGIN_NAME} v1.0.0 (64-bit + 32-bit)" --notes-file notes.md --latest
+          gh release create v1.1.0 out/${FILE_BASE}-Setup-64bit.exe out/${FILE_BASE}-Setup-32bit.exe \
+            --title "${PLUGIN_NAME} v1.1.0 (64-bit + 32-bit)" --notes-file notes.md --latest

@@ -90,6 +90,7 @@ private:
 
     juce::SmoothedValue<float> mixSm, outSm, driveSm, airSm, widthSm;
     float duckEnv = 0.0f, duckGainDb = 0.0f;
+    float lastMix = -1.0f, dryG = 1.0f, wetG = 0.0f;
     double fs = 48000.0;
     float lastLow = -1, lastHigh = -1, lastMidF = -1, lastMidG = -100, lastAir = -1;
     int currentProgram = 0;

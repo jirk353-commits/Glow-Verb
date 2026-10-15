@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(GlowVerb VERSION 1.0.0 LANGUAGES C CXX)
+project(GlowVerb VERSION 1.1.0 LANGUAGES C CXX)
 
 # Static MSVC runtime: no Visual C++ Redistributable needed on the user PC
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -60,5 +60,12 @@ if(GV_BUILD_TESTS)
         JucePlugin_Build_VST3=0 GV_TEST_BUILD=1 JUCE_MODAL_LOOPS_PERMITTED=1)
     target_include_directories(GVTests PRIVATE Source)
     target_link_libraries(GVTests PRIVATE juce::juce_audio_processors juce::juce_dsp juce::juce_gui_basics
+        juce::juce_recommended_config_flags)
+    juce_add_console_app(GVRender PRODUCT_NAME "GVRender")
+    target_sources(GVRender PRIVATE ${GV_SOURCES} Tests/Render.cpp)
+    target_compile_definitions(GVRender PRIVATE ${GV_DEFINITIONS} JucePlugin_Name="Glow Verb"
+        JucePlugin_Build_VST3=0 GV_TEST_BUILD=1)
+    target_include_directories(GVRender PRIVATE Source)
+    target_link_libraries(GVRender PRIVATE juce::juce_audio_processors juce::juce_audio_formats juce::juce_dsp juce::juce_gui_basics
         juce::juce_recommended_config_flags)
 endif()

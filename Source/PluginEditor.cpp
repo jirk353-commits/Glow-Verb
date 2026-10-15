@@ -427,7 +427,7 @@ void MainPanel::drawStatic (Graphics& g)
     g.setColour (col::textDim.withAlpha (0.75f));
     g.setFont (uiFont (11.0f, true, 0.2f));
     g.drawText ("VOCALS  -  DRUMS  -  INSTRUMENTS  -  PADS", 26, H - 22, 420, 16, Justification::centredLeft, false);
-    g.drawText ("v1.0  |  ROHIT JI", W - 26 - 300, H - 22, 300, 16, Justification::centredRight, false);
+    g.drawText ("v1.1  |  ROHIT JI", W - 26 - 300, H - 22, 300, 16, Justification::centredRight, false);
 }
 
 //==============================================================================
